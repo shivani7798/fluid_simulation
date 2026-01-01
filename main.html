@@ -1,5 +1,4 @@
-how can i use this fluid simulation in ml project give some suggestion
-
+in below code the only problem is when i move cursor the starting is with big white color and then colours follow i want to reduce the white size get it ?
 <!doctype html>
 <html lang="en">
 <head>
@@ -109,7 +108,7 @@ let config = {
     PRESSURE: 0.1,
     PRESSURE_ITERATIONS: 20,
     CURL: 2,
-    SPLAT_RADIUS: 0.5,
+    SPLAT_RADIUS: 0.1,
     SPLAT_FORCE: 6000,
     SHADING: true,
     COLOR_UPDATE_SPEED: 6,
@@ -988,11 +987,25 @@ function drawDisplay (target) {
     let height = target == null ? gl.drawingBufferHeight : target.height;
 
     displayMaterial.bind();
+
     if (config.SHADING)
         gl.uniform2f(displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
+
     gl.uniform1i(displayMaterial.uniforms.uTexture, dye.read.attach(0));
+
+    // ✅ FIX: bind dithering texture properly
+    if (displayMaterial.uniforms.uDithering) {
+        gl.uniform1i(displayMaterial.uniforms.uDithering, ditheringTexture.attach(1));
+        gl.uniform2f(
+            displayMaterial.uniforms.ditherScale,
+            width / ditheringTexture.width,
+            height / ditheringTexture.height
+        );
+    }
+
     blit(target);
 }
+
 
 function splatPointer (pointer) {
   let dx = pointer.deltaX * config.SPLAT_FORCE;
@@ -1002,9 +1015,9 @@ function splatPointer (pointer) {
 
 function clickSplat (pointer) {
     const color = generateColor();
-    color.r *= 10.0;
-    color.g *= 10.0;
-    color.b *= 10.0;
+    color.r *= 0.6;
+    color.g *= 0.6;
+    color.b *= 0.6;
     let dx = 10 * (Math.random() - 0.5);
     let dy = 30 * (Math.random() - 0.5);
     splat(pointer.texcoordX, pointer.texcoordY, dx, dy, color);
@@ -1135,13 +1148,10 @@ function correctDeltaY (delta) {
     return delta;
 }
 //
-//
+
 function generateColor() {
-    let c = HSVtoRGB(Math.random(), 1.0, 1.0); // random hue, full saturation & value
-    c.r *= 0.0015; // keep your scaling if needed
-    c.g *= 0.0015;
-    c.b *= 0.0015;
-    return c;
+    let c = HSVtoRGB(Math.random(), 1.0, 1.0); // Random hue, full saturation & value
+    return c; // Keep full brightness
 }
 
 function HSVtoRGB(h, s, v) {
@@ -1163,14 +1173,11 @@ function HSVtoRGB(h, s, v) {
     }
 
     return {
-        r: r * 255,
-        g: g * 255,
-        b: b * 255
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
     };
 }
-
-console.log(generateColor());
-
 
 function wrap (value, min, max) {
     let range = max - min;
@@ -1281,6 +1288,12 @@ function resizeCanvasToWindow() {
 window.addEventListener('resize', resizeCanvasToWindow);
 resizeCanvasToWindow();
 startRenderLoop();
+
+// ✅ seed simulation so screen is never black
+setTimeout(() => {
+  randomSplat();
+}, 100);
+
 
 } /* initFluid end */
 </script>
